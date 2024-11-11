@@ -5,7 +5,7 @@ from PyPDF2 import PdfMerger
 from PIL import Image
 from io import BytesIO
 import time 
-from bot.broadcast import bot
+from bot import broadcast
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto, ReplyKeyboardMarkup, KeyboardButton
 
 # Initialize bot with token from environment variable
