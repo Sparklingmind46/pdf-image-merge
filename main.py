@@ -5,6 +5,7 @@ from PyPDF2 import PdfMerger
 from PIL import Image
 from io import BytesIO
 import time 
+from broadcast import bot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto, ReplyKeyboardMarkup, KeyboardButton
 
 # Initialize bot with token from environment variable
@@ -310,4 +311,5 @@ def clear_images(message):
     bot.reply_to(message, "Your image list has been cleared.")
 
 # Run the bot
-bot.polling()
+if __name__ == "__main__":
+    bot.polling()
