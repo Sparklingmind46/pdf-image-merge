@@ -14,6 +14,7 @@ bot = telebot.TeleBot(BOT_TOKEN)
 # Temporary storage for user files (dictionary to store file paths by user)
 user_files = {}
 user_images = {}
+user_message_ids = {}
 
 # Start command handler
 @bot.message_handler(commands=['start'])
@@ -37,11 +38,11 @@ def send_welcome(message):
     markup.add(InlineKeyboardButton("•Dᴇᴠᴇʟᴏᴘᴇʀ• ☘", url="https://t.me/Ur_amit_01"))
     
     # Send the photo with the caption and inline keyboard
-    image_url = 'https://graph.org/file/beceaa5b16f36a7152f5f-698ec44623151d3067.jpg'
+    image_url = 'https://graph.org/file/0f1d046b4b3899e1812bf-0e63e80abb1bef1a8b.jpg'
     bot.send_photo(
         message.chat.id, 
         image_url, 
-        caption="•Hello there, Welcome💓✨\n• I can merge PDFs (Max= 20MB per file).\n• Send PDF files 📕 to merge and use /merge when you're done.",
+        caption="Aʜ, ᴀ ɴᴇᴡ ᴛʀᴀᴠᴇʟᴇʀ ʜᴀs ᴀʀʀɪᴠᴇᴅ... Wᴇʟᴄᴏᴍᴇ ᴛᴏ ᴍʏ ᴍᴀɢɪᴄᴀʟ ʀᴇᴀʟᴍ !🧞‍♂️✨\n\n• I ᴀᴍ PDF ɢᴇɴɪᴇ, ɪ ᴡɪʟʟ ɢʀᴀɴᴛ ʏᴏᴜʀ ᴘᴅғ ᴡɪsʜᴇs! 📑🪄",
         reply_markup=markup
     )
 
@@ -49,20 +50,20 @@ def send_welcome(message):
 def callback_handler(call):
     # Define media and caption based on the button clicked
     if call.data == "help":
-        new_image_url = 'https://graph.org/file/beceaa5b16f36a7152f5f-698ec44623151d3067.jpg'
+        new_image_url = 'https://graph.org/file/0f1d046b4b3899e1812bf-0e63e80abb1bef1a8b.jpg'
         new_caption = "Hᴇʀᴇ Is Tʜᴇ Hᴇʟᴘ Fᴏʀ Mʏ Cᴏᴍᴍᴀɴᴅs.:\n1. Send PDF files.\n2. Use /merge when you're ready to combine them.\n3. Max size = 20MB per file.\n\n• Note: My developer is constantly adding new features in my program , if you found any bug or error please report at @Ur_Amit_01"
         # Add a "Back" button
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton("Back", callback_data="back"))
     elif call.data == "about":
     # Get the bot's username dynamically
-        new_image_url = 'https://graph.org/file/beceaa5b16f36a7152f5f-698ec44623151d3067.jpg'
+        new_image_url = 'https://graph.org/file/0f1d046b4b3899e1812bf-0e63e80abb1bef1a8b.jpg'
         new_caption = ABOUT_TXT
         markup = InlineKeyboardMarkup().add(InlineKeyboardButton("Back", callback_data="back"))
     elif call.data == "back":
         # Go back to the start message
-        new_image_url = 'https://graph.org/file/beceaa5b16f36a7152f5f-698ec44623151d3067.jpg'
-        new_caption = "*Welcome💓✨\n• I can merge PDFs (Max= 20MB per file).\n• Send PDF files 📕 to merge and use /merge when you're done.*"
+        new_image_url = 'https://graph.org/file/0f1d046b4b3899e1812bf-0e63e80abb1bef1a8b.jpg'
+        new_caption = "Aʜ, ᴀ ɴᴇᴡ ᴛʀᴀᴠᴇʟᴇʀ ʜᴀs ᴀʀʀɪᴠᴇᴅ... Wᴇʟᴄᴏᴍᴇ ᴛᴏ ᴍʏ ᴍᴀɢɪᴄᴀʟ ʀᴇᴀʟᴍ !🧞‍♂️✨\n\n• I ᴀᴍ PDF ɢᴇɴɪᴇ, ɪ ᴡɪʟʟ ɢʀᴀɴᴛ ʏᴏᴜʀ ᴘᴅғ ᴡɪsʜᴇs! 📑🪄"
         # Restore original keyboard with Help, About, and Developer buttons
         markup = InlineKeyboardMarkup()
         markup.row_width = 2
@@ -226,6 +227,9 @@ def clear_files(message):
         user_files[user_id] = []
     bot.reply_to(message, "Your file list has been cleared.")
 
+
+user_images = {}
+
 @bot.message_handler(commands=['convert_images'])
 def convert_images_to_pdf(message):
     user_id = message.from_user.id
@@ -303,17 +307,29 @@ def handle_image(message):
     clear_button = types.InlineKeyboardButton("Clear Images", callback_data="clear_images")
     markup.add(merge_button, clear_button)
 
-    # Update the message to show the current image count
-    bot.reply_to(message, f"Added image #{image_count} to the list for PDF conversion.", reply_markup=markup)
+    # Delete the previous update message, if any
+    if user_id in user_message_ids:
+        bot.delete_message(message.chat.id, user_message_ids[user_id])
+
+    # Update the message with the current image count and buttons
+    user_message = bot.reply_to(message, f"Added image #{image_count} to the list for PDF conversion.", reply_markup=markup)
+    user_message_ids[user_id] = user_message.message_id  # Store the message ID for future deletion
 
 # Callback for Inline Buttons
 @bot.callback_query_handler(func=lambda call: call.data == 'merge_images')
 def merge_images_callback(call):
     user_id = call.from_user.id
-    if user_id not in user_images or len(user_images[user_id]) == 0:
-        bot.answer_callback_query(call.id, "No images to merge.")
-        return
+    
+    # Show a message saying we are processing the images
     bot.answer_callback_query(call.id, "Merging images...")
+    bot.send_message(call.message.chat.id, "Merging, please wait...")
+
+    # Check if there are images to merge
+    if user_id not in user_images or len(user_images[user_id]) == 0:
+        bot.send_message(call.message.chat.id, "No images to merge.")
+        return
+    
+    # Proceed to handle the merging
     bot.send_message(call.message.chat.id, "Please provide a filename for the PDF (without .pdf extension).")
     bot.register_next_step_handler(call.message, handle_image_pdf_filename)
 
