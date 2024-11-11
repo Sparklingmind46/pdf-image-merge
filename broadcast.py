@@ -4,7 +4,8 @@ from pymongo import MongoClient
 import time
 
 # Initialize the bot
-bot = TeleBot("YOUR_BOT_TOKEN")  # Replace with your bot token
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+bot = TeleBot("BOT_TOKEN")  # Replace with your bot token
 
 # MongoDB setup
 MONGO_URI = "mongodb+srv://uramit0001:EZ1u5bfKYZ52XeGT@cluster0.qnbzn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"  # Replace with your MongoDB URI
