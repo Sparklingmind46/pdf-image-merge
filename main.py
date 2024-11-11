@@ -315,8 +315,7 @@ def handle_image(message):
         bot.delete_message(message.chat.id, user_message_ids[user_id])
 
     # Update the message with the current image count and button
-    user_message = bot.send_message(message.chat.id, f"• Number of images {image_count} 🖼️\n\n• Send more or click Merge images📄"
-➕ @wordtopdff ✅", reply_markup=markup)
+    user_message = bot.send_message(message.chat.id, f"• Number of images {image_count} 🖼️\n\n• Send more or click Merge images📄", reply_markup=markup)
     user_message_ids[user_id] = user_message.message_id  # Store the message ID for future deletion
 
 # Callback for Inline Buttons
