@@ -310,14 +310,15 @@ def handle_image(message):
     clear_button = types.InlineKeyboardButton("Clear Images 🗑️", callback_data="clear_images")
     markup.add(merge_button, clear_button)
 
-    # Delete the previous update message, if any
+try:
     if user_id in user_message_ids:
-    bot.delete_message(message.chat.id, user_message_ids[user_id])
+        bot.delete_message(message.chat.id, user_message_ids[user_id])
 except telebot.apihelper.ApiTelegramException as e:
     if 'message to delete not found' in str(e):
         print("Message not found, skipping delete.")
     else:
         raise e  # Reraise if it's a different error
+        
     # Update the message with the current image count and button
     user_message = bot.send_message(message.chat.id, f"• Number of images {image_count} 🖼️\n\n• Send more or click Merge images📄", reply_markup=markup)
     user_message_ids[user_id] = user_message.message_id  # Store the message ID for future deletion
