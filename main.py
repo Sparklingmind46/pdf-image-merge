@@ -14,6 +14,7 @@ bot = telebot.TeleBot(BOT_TOKEN)
 # Temporary storage for user files (dictionary to store file paths by user)
 user_files = {}
 user_images = {}
+status_message_id = {}
 
 # Start command handler
 @bot.message_handler(commands=['start'])
