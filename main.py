@@ -3,6 +3,7 @@ import telebot
 from telebot import types
 from PyPDF2 import PdfMerger
 from PIL import Image
+from io import BytesIO
 import time 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 
@@ -226,6 +227,7 @@ def clear_files(message):
     bot.reply_to(message, "Your file list has been cleared.")
 
 # Convert images to PDF command handler
+# Convert images to PDF command handler
 @bot.message_handler(commands=['convert_images'])
 def convert_images_to_pdf(message):
     user_id = message.from_user.id
@@ -256,23 +258,25 @@ def handle_image_pdf_filename(message):
 
 def convert_images_with_filename(user_id, chat_id, filename):
     try:
-        # Open images and convert them to PDF
-        image_list = [Image.open(img) for img in user_images[user_id]]
-        pdf_path = f"/tmp/{filename}"  # Temporary save path
+        # Use BytesIO to avoid saving the PDF file on disk
+        pdf_buffer = BytesIO()
 
-        # Save images as a single PDF
-        image_list[0].save(pdf_path, "PDF", save_all=True, append_images=image_list[1:])
+        # Sort images by message_id to maintain order and open images in RGB mode
+        sorted_images = sorted(user_images[user_id], key=lambda x: x[0])
+        image_list = [Image.open(img_data).convert("RGB") for _, img_data in sorted_images]
         
-        # Send the PDF file back to the user
-        with open(pdf_path, "rb") as pdf_file:
-            bot.send_document(chat_id, pdf_file)
+        # Save all images to a single PDF file in memory without resizing
+        image_list[0].save(pdf_buffer, format="PDF", save_all=True, append_images=image_list[1:])
+        pdf_buffer.seek(0)  # Reset buffer position to the beginning
 
+        # Send the PDF file back to the user from memory
+        bot.send_document(chat_id, pdf_buffer, visible_file_name=filename)
         bot.send_message(chat_id, "Here is your converted PDF! 📕😎")
 
     finally:
         # Clean up user images after conversion
-        for img in user_images[user_id]:
-            os.remove(img)
+        for _, img_data in user_images[user_id]:
+            img_data.close()  # Close BytesIO streams
         user_images[user_id] = []
 
 # Handle received images
@@ -288,25 +292,22 @@ def handle_image(message):
     file_info = bot.get_file(message.photo[-1].file_id)
     downloaded_file = bot.download_file(file_info.file_path)
     
-    # Save the file with a unique name
-    file_name = f"{message.photo[-1].file_id}.jpg"
-    file_path = f"/tmp/{file_name}"
-    with open(file_path, 'wb') as new_file:
-        new_file.write(downloaded_file)
+    # Save the file as a BytesIO stream (in memory) with its message_id to preserve order
+    image_stream = BytesIO(downloaded_file)
+    user_images[user_id].append((message.message_id, image_stream))
     
-    # Store file path in user's image list
-    user_images[user_id].append(file_path)
-    bot.reply_to(message, f"Added image to the list for PDF conversion.\n Send /convert_images when you're done")
+    bot.reply_to(message, "Added image to the list for PDF conversion.")
 
 # Clear images command
 @bot.message_handler(commands=['clear_images'])
 def clear_images(message):
     user_id = message.from_user.id
     if user_id in user_images:
-        for img in user_images[user_id]:
-            os.remove(img)
+        for _, img_data in user_images[user_id]:
+            img_data.close()  # Close each BytesIO stream
         user_images[user_id] = []
     bot.reply_to(message, "Your image list has been cleared.")
+
 
 # Run the bot
 bot.polling()
