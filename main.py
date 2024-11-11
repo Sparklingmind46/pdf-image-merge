@@ -5,7 +5,7 @@ from PyPDF2 import PdfMerger
 from PIL import Image
 from io import BytesIO
 import time 
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto, ReplyKeyboardMarkup, KeyboardButton
 
 # Initialize bot with token from environment variable
 BOT_TOKEN = os.getenv('BOT_TOKEN')
@@ -227,8 +227,35 @@ def clear_files(message):
         user_files[user_id] = []
     bot.reply_to(message, "Your file list has been cleared.")
 
-@bot.message_handler(commands=['convert_images'])
-def convert_images_to_pdf(message):
+# Handle received images
+@bot.message_handler(content_types=['photo'])
+def handle_image(message):
+    user_id = message.from_user.id
+    
+    # Ensure dictionary entry for each user's images
+    if user_id not in user_images:
+        user_images[user_id] = []
+    
+    # Get file info and download the image
+    file_info = bot.get_file(message.photo[-1].file_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+    
+    # Save the file as a BytesIO stream (in memory) with its message_id to preserve order
+    image_stream = BytesIO(downloaded_file)
+    user_images[user_id].append((message.message_id, image_stream))
+    
+    # Create a custom keyboard with descriptive "Merge Images" and "Clear Images" buttons
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    merge_button = KeyboardButton("Merge Images")
+    clear_button = KeyboardButton("Clear Images")
+    keyboard.add(merge_button, clear_button)
+    
+    # Send a message with the custom keyboard
+    bot.reply_to(message, "Added image to the list for PDF conversion.", reply_markup=keyboard)
+
+# Handle "Merge Images" button
+@bot.message_handler(func=lambda message: message.text == "Merge Images")
+def handle_merge_images(message):
     user_id = message.from_user.id
     
     # Check if there are images to convert
@@ -255,6 +282,7 @@ def handle_image_pdf_filename(message):
         bot.reply_to(message, "Please provide a valid filename.")
         bot.register_next_step_handler(message, handle_image_pdf_filename)
 
+# Function to convert images to PDF
 def convert_images_with_filename(user_id, chat_id, filename):
     try:
         # Use BytesIO to avoid saving the PDF file on disk
@@ -278,34 +306,18 @@ def convert_images_with_filename(user_id, chat_id, filename):
             img_data.close()  # Close BytesIO streams
         user_images[user_id] = []
 
-# Handle received images
-@bot.message_handler(content_types=['photo'])
-def handle_image(message):
+# Handle "Clear Images" button
+@bot.message_handler(func=lambda message: message.text == "Clear Images")
+def handle_clear_images(message):
     user_id = message.from_user.id
     
-    # Ensure directory for each user's images
-    if user_id not in user_images:
-        user_images[user_id] = []
-    
-    # Get file info and download the image
-    file_info = bot.get_file(message.photo[-1].file_id)
-    downloaded_file = bot.download_file(file_info.file_path)
-    
-    # Save the file as a BytesIO stream (in memory) with its message_id to preserve order
-    image_stream = BytesIO(downloaded_file)
-    user_images[user_id].append((message.message_id, image_stream))
-    
-    bot.reply_to(message, "Added image to the list for PDF conversion.")
-
-# Clear images command
-@bot.message_handler(commands=['clear_images'])
-def clear_images(message):
-    user_id = message.from_user.id
+    # Check if the user has images and clear them
     if user_id in user_images:
         for _, img_data in user_images[user_id]:
             img_data.close()  # Close each BytesIO stream
         user_images[user_id] = []
+    
     bot.reply_to(message, "Your image list has been cleared.")
-
+    
 # Run the bot
 bot.polling()
