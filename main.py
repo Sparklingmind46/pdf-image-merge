@@ -310,6 +310,8 @@ def handle_image(message):
     clear_button = types.InlineKeyboardButton("Clear Images 🗑️", callback_data="clear_images")
     markup.add(merge_button, clear_button)
 
+user_id = message.from_user.id  # This line assumes you want to get the user ID from the incoming message.
+
 try:
     if user_id in user_message_ids:
         bot.delete_message(message.chat.id, user_message_ids[user_id])
