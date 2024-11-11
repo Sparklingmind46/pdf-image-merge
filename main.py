@@ -98,8 +98,8 @@ ABOUT_TXT = """<b><blockquote>⍟───[ MY ᴅᴇᴛᴀɪʟꜱ ]───⍟
 @bot.message_handler(commands=['help'])
 def send_help(message):
     help_text = "1. Send me PDF files you want to merge.\n"
-    help_text += "2. Use /merge to combine the files into one PDF.\n"
-    help_text += "3. Use /clear to reset the list of files."
+    help_text += "2. Use /pdf to combine PDFs.\n"
+    help_text += "3. Use /image to combine Images.."
     bot.reply_to(message, help_text)
 
 # Helper to update progress
@@ -111,7 +111,7 @@ def update_progress(chat_id, message_id, progress_text):
     )
 
 # Merge command handler
-@bot.message_handler(commands=['merge'])
+@bot.message_handler(commands=['pdf'])
 def merge_pdfs(message):
     user_id = message.from_user.id
     
@@ -229,7 +229,7 @@ def clear_files(message):
 
 
 
-@bot.message_handler(commands=['convert_images'])
+@bot.message_handler(commands=['image'])
 def convert_images_to_pdf(message):
     user_id = message.from_user.id
     
@@ -272,11 +272,7 @@ def convert_images_with_filename(user_id, chat_id, filename):
 
         # Send the PDF file back to the user from memory
         bot.send_document(chat_id, pdf_buffer, visible_file_name=filename)
-        bot.send_message(chat_id, "Here is your merged PDF, Master! 🧞‍♂️🪄")
-
-        # After sending the PDF, delete the "please wait" message if it exists
-        if user_id in user_message_ids:
-            bot.delete_message(chat_id, user_message_ids[user_id])
+        bot.send_message(chat_id, "Here is your converted PDF! 📕😎")
 
     finally:
         # Clean up user images after conversion
@@ -301,54 +297,17 @@ def handle_image(message):
     image_stream = BytesIO(downloaded_file)
     user_images[user_id].append((message.message_id, image_stream))
     
-    # Get the current count of images for the process
-    image_count = len(user_images[user_id])
+    bot.reply_to(message, "Added image to the list for PDF conversion. send /image when you're done")
 
-    # Prepare the buttons for merging and clearing
-    markup = types.InlineKeyboardMarkup()
-    merge_button = types.InlineKeyboardButton("Merge Images 📃", callback_data="merge_images")
-    clear_button = types.InlineKeyboardButton("Clear Images 🗑️", callback_data="clear_images")
-    markup.add(merge_button, clear_button)
-
-user_id = message.from_user.id  # This line assumes you want to get the user ID from the incoming message.
-
-try:
-    if user_id in user_message_ids:
-        bot.delete_message(message.chat.id, user_message_ids[user_id])
-except telebot.apihelper.ApiTelegramException as e:
-    if 'message to delete not found' in str(e):
-        print("Message not found, skipping delete.")
-    else:
-        raise e  # Reraise if it's a different error
-        
-    # Update the message with the current image count and button
-    user_message = bot.send_message(message.chat.id, f"• Number of images {image_count} 🖼️\n\n• Send more or click Merge images📄", reply_markup=markup)
-    user_message_ids[user_id] = user_message.message_id  # Store the message ID for future deletion
-
-# Callback for Inline Buttons
-@bot.callback_query_handler(func=lambda call: call.data == 'merge_images')
-def merge_images_callback(call):
-    user_id = call.from_user.id
-    
-
-    # Check if there are images to merge
-    if user_id not in user_images or len(user_images[user_id]) == 0:
-        bot.send_message(call.message.chat.id, "No images to merge.")
-        return
-    
-    # Proceed to handle the merging
-    bot.send_message(call.message.chat.id, "Please provide a filename for the PDF (without .pdf extension).")
-    bot.register_next_step_handler(call.message, handle_image_pdf_filename)
-
-@bot.callback_query_handler(func=lambda call: call.data == 'clear_images')
-def clear_images_callback(call):
-    user_id = call.from_user.id
+# Clear images command
+@bot.message_handler(commands=['clear_images'])
+def clear_images(message):
+    user_id = message.from_user.id
     if user_id in user_images:
         for _, img_data in user_images[user_id]:
             img_data.close()  # Close each BytesIO stream
         user_images[user_id] = []
-    bot.answer_callback_query(call.id, "Images cleared.")
-    bot.send_message(call.message.chat.id, "Your image list has been cleared. 🧹🗑️")
+    bot.reply_to(message, "Your image list has been cleared.")
 
 # Run the bot
 bot.polling()
