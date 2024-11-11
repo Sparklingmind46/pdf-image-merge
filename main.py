@@ -22,7 +22,7 @@ def send_welcome(message):
     sticker_id = 'CAACAgUAAxkBAAECEpdnLcqQbmvQfCMf5E3rBK2dkgzqiAACJBMAAts8yFf1hVr67KQJnh4E'
     sent_sticker = bot.send_sticker(message.chat.id, sticker_id)
     sticker_message_id = sent_sticker.message_id
-    time.sleep(3)
+    time.sleep(2)
     bot.delete_message(message.chat.id, sticker_message_id)
     
     # Define the inline keyboard with buttons
