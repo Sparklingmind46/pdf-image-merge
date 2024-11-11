@@ -227,12 +227,10 @@ def clear_files(message):
     bot.reply_to(message, "Your file list has been cleared.")
 
 # Convert images to PDF command handler
-# Convert images to PDF command handler
 @bot.message_handler(commands=['convert_images'])
 def convert_images_to_pdf(message):
     user_id = message.from_user.id
     
-    # Check if there are images to convert
     if user_id not in user_images or len(user_images[user_id]) == 0:
         bot.reply_to(message, "Please upload some images first to convert into a PDF.")
         return
@@ -240,17 +238,13 @@ def convert_images_to_pdf(message):
     bot.reply_to(message, "Please provide a filename for the PDF (without .pdf extension).")
     bot.register_next_step_handler(message, handle_image_pdf_filename)
 
-# Handle filename input for image PDF
 def handle_image_pdf_filename(message):
     user_id = message.from_user.id
     filename = message.text.strip()
     
     if filename:
-        # Ensure filename ends with .pdf
         if not filename.lower().endswith(".pdf"):
             filename += ".pdf"
-        
-        # Convert images to PDF with the given filename
         convert_images_with_filename(user_id, message.chat.id, filename)
     else:
         bot.reply_to(message, "Please provide a valid filename.")
@@ -258,55 +252,89 @@ def handle_image_pdf_filename(message):
 
 def convert_images_with_filename(user_id, chat_id, filename):
     try:
-        # Use BytesIO to avoid saving the PDF file on disk
         pdf_buffer = BytesIO()
-
-        # Sort images by message_id to maintain order and open images in RGB mode
         sorted_images = sorted(user_images[user_id], key=lambda x: x[0])
         image_list = [Image.open(img_data).convert("RGB") for _, img_data in sorted_images]
         
-        # Save all images to a single PDF file in memory without resizing
         image_list[0].save(pdf_buffer, format="PDF", save_all=True, append_images=image_list[1:])
-        pdf_buffer.seek(0)  # Reset buffer position to the beginning
+        pdf_buffer.seek(0)
 
-        # Send the PDF file back to the user from memory
         bot.send_document(chat_id, pdf_buffer, visible_file_name=filename)
         bot.send_message(chat_id, "Here is your converted PDF! 📕😎")
 
     finally:
-        # Clean up user images after conversion
         for _, img_data in user_images[user_id]:
-            img_data.close()  # Close BytesIO streams
+            img_data.close()
         user_images[user_id] = []
+        # Clear the status message after conversion
+        if user_id in status_message_id:
+            bot.delete_message(chat_id, status_message_id[user_id])
+            del status_message_id[user_id]
 
-# Handle received images
 @bot.message_handler(content_types=['photo'])
 def handle_image(message):
     user_id = message.from_user.id
     
-    # Ensure directory for each user's images
     if user_id not in user_images:
         user_images[user_id] = []
     
-    # Get file info and download the image
     file_info = bot.get_file(message.photo[-1].file_id)
     downloaded_file = bot.download_file(file_info.file_path)
     
-    # Save the file as a BytesIO stream (in memory) with its message_id to preserve order
     image_stream = BytesIO(downloaded_file)
     user_images[user_id].append((message.message_id, image_stream))
     
-    bot.reply_to(message, "Added image to the list for PDF conversion.")
+    update_status_message(message)
 
-# Clear images command
+def update_status_message(message):
+    user_id = message.from_user.id
+    chat_id = message.chat.id
+    num_images = len(user_images[user_id])
+    
+    # Create the message text
+    status_text = f"Total images received: {num_images}\nChoose an option:"
+    
+    # Inline keyboard with buttons
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("Convert to PDF 📃", callback_data="convert_images"),
+        types.InlineKeyboardButton("Clear Images 🗑", callback_data="clear_images")
+    )
+    
+    # Send or update the status message
+    if user_id in status_message_id:
+        bot.edit_message_text(status_text, chat_id, status_message_id[user_id], reply_markup=markup)
+    else:
+        status_message = bot.send_message(chat_id, status_text, reply_markup=markup)
+        status_message_id[user_id] = status_message.message_id
+
+@bot.callback_query_handler(func=lambda call: call.data in ["convert_images", "clear_images"])
+def callback_handler(call):
+    user_id = call.from_user.id
+    chat_id = call.message.chat.id
+
+    if call.data == "convert_images":
+        # Trigger the convert_images_to_pdf function
+        convert_images_to_pdf(call.message)
+    elif call.data == "clear_images":
+        clear_images(call.message)
+    
+    # Answer the callback to remove the loading animation on the button
+    bot.answer_callback_query(call.id)
+
 @bot.message_handler(commands=['clear_images'])
 def clear_images(message):
     user_id = message.from_user.id
     if user_id in user_images:
         for _, img_data in user_images[user_id]:
-            img_data.close()  # Close each BytesIO stream
+            img_data.close()
         user_images[user_id] = []
     bot.reply_to(message, "Your image list has been cleared.")
+    
+    # Clear the status message after clearing images
+    if user_id in status_message_id:
+        bot.delete_message(message.chat.id, status_message_id[user_id])
+        del status_message_id[user_id]
 
 
 # Run the bot
