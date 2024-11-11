@@ -2,9 +2,9 @@ import os
 import telebot
 from telebot import types
 from PyPDF2 import PdfMerger
+from PIL import Image
 import time 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
-from pyrogram import Client, filters
 
 # Initialize bot with token from environment variable
 BOT_TOKEN = os.getenv('BOT_TOKEN')
@@ -12,6 +12,7 @@ bot = telebot.TeleBot(BOT_TOKEN)
 
 # Temporary storage for user files (dictionary to store file paths by user)
 user_files = {}
+user_images = {}
 
 # Start command handler
 @bot.message_handler(commands=['start'])
