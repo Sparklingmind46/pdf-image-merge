@@ -228,6 +228,7 @@ def clear_files(message):
     bot.reply_to(message, "Your file list has been cleared.")
 
 # Convert images to PDF command handler
+# Convert images to PDF command handler
 @bot.message_handler(commands=['convert_images'])
 def convert_images_to_pdf(message):
     user_id = message.from_user.id
@@ -264,10 +265,10 @@ def convert_images_with_filename(user_id, chat_id, filename):
         bot.send_message(chat_id, "Here is your converted PDF! 📕😎")
 
     finally:
+        # Clear user images and delete status message
         for _, img_data in user_images[user_id]:
             img_data.close()
         user_images[user_id] = []
-        # Clear the status message after conversion
         if user_id in status_message_id:
             bot.delete_message(chat_id, status_message_id[user_id])
             del status_message_id[user_id]
@@ -327,15 +328,19 @@ def callback_handler(call):
 def clear_images(message):
     user_id = message.from_user.id
     if user_id in user_images:
+        # Clear the images
         for _, img_data in user_images[user_id]:
             img_data.close()
         user_images[user_id] = []
-    bot.reply_to(message, "Your image list has been cleared.")
-    
-    # Clear the status message after clearing images
-    if user_id in status_message_id:
-        bot.delete_message(message.chat.id, status_message_id[user_id])
-        del status_message_id[user_id]
+
+        # Clear the status message after clearing images
+        if user_id in status_message_id:
+            bot.delete_message(message.chat.id, status_message_id[user_id])
+            del status_message_id[user_id]
+
+        # Send confirmation message and reset the status message
+        bot.reply_to(message, "Your image list has been cleared.")
+        update_status_message(message)
 
 
 # Run the bot
