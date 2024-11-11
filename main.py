@@ -228,7 +228,6 @@ def clear_files(message):
     bot.reply_to(message, "Your file list has been cleared.")
 
 
-user_images = {}
 
 @bot.message_handler(commands=['convert_images'])
 def convert_images_to_pdf(message):
@@ -273,7 +272,11 @@ def convert_images_with_filename(user_id, chat_id, filename):
 
         # Send the PDF file back to the user from memory
         bot.send_document(chat_id, pdf_buffer, visible_file_name=filename)
-        bot.send_message(chat_id, "Here is your converted PDF! 📕😎")
+        bot.send_message(chat_id, "Here is your merged PDF, Master! 🧞‍♂️🪄")
+
+        # After sending the PDF, delete the "please wait" message if it exists
+        if user_id in user_message_ids:
+            bot.delete_message(chat_id, user_message_ids[user_id])
 
     finally:
         # Clean up user images after conversion
@@ -303,16 +306,17 @@ def handle_image(message):
 
     # Prepare the buttons for merging and clearing
     markup = types.InlineKeyboardMarkup()
-    merge_button = types.InlineKeyboardButton("Merge Images", callback_data="merge_images")
-    clear_button = types.InlineKeyboardButton("Clear Images", callback_data="clear_images")
+    merge_button = types.InlineKeyboardButton("Merge Images 📃", callback_data="merge_images")
+    clear_button = types.InlineKeyboardButton("Clear Images 🗑️", callback_data="clear_images")
     markup.add(merge_button, clear_button)
 
     # Delete the previous update message, if any
     if user_id in user_message_ids:
         bot.delete_message(message.chat.id, user_message_ids[user_id])
 
-    # Update the message with the current image count and buttons
-    user_message = bot.reply_to(message, f"Added image #{image_count} to the list for PDF conversion.", reply_markup=markup)
+    # Update the message with the current image count and button
+    user_message = bot.send_message(message.chat.id, f"• Number of images {image_count} 🖼️\n\n• Send more or click Merge images📄
+➕ @wordtopdff ✅", reply_markup=markup)
     user_message_ids[user_id] = user_message.message_id  # Store the message ID for future deletion
 
 # Callback for Inline Buttons
@@ -322,7 +326,7 @@ def merge_images_callback(call):
     
     # Show a message saying we are processing the images
     bot.answer_callback_query(call.id, "Merging images...")
-    bot.send_message(call.message.chat.id, "Merging, please wait...")
+    bot.send_message(call.message.chat.id, "Your document is being created master, please wait a moment 🧞‍♂️✨")
 
     # Check if there are images to merge
     if user_id not in user_images or len(user_images[user_id]) == 0:
@@ -342,6 +346,6 @@ def clear_images_callback(call):
         user_images[user_id] = []
     bot.answer_callback_query(call.id, "Images cleared.")
     bot.send_message(call.message.chat.id, "Your image list has been cleared.")
-    
+
 # Run the bot
 bot.polling()
