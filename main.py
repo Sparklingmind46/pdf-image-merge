@@ -14,7 +14,6 @@ bot = telebot.TeleBot(BOT_TOKEN)
 # Temporary storage for user files (dictionary to store file paths by user)
 user_files = {}
 user_images = {}
-status_message_id = {}
 
 # Start command handler
 @bot.message_handler(commands=['start'])
@@ -38,7 +37,7 @@ def send_welcome(message):
     markup.add(InlineKeyboardButton("•Dᴇᴠᴇʟᴏᴘᴇʀ• ☘", url="https://t.me/Ur_amit_01"))
     
     # Send the photo with the caption and inline keyboard
-    image_url = 'https://envs.sh/jxZ.jpg'
+    image_url = 'https://graph.org/file/beceaa5b16f36a7152f5f-698ec44623151d3067.jpg'
     bot.send_photo(
         message.chat.id, 
         image_url, 
@@ -50,19 +49,19 @@ def send_welcome(message):
 def callback_handler(call):
     # Define media and caption based on the button clicked
     if call.data == "help":
-        new_image_url = 'https://envs.sh/jxZ.jpg'
+        new_image_url = 'https://graph.org/file/beceaa5b16f36a7152f5f-698ec44623151d3067.jpg'
         new_caption = "Hᴇʀᴇ Is Tʜᴇ Hᴇʟᴘ Fᴏʀ Mʏ Cᴏᴍᴍᴀɴᴅs.:\n1. Send PDF files.\n2. Use /merge when you're ready to combine them.\n3. Max size = 20MB per file.\n\n• Note: My developer is constantly adding new features in my program , if you found any bug or error please report at @Ur_Amit_01"
         # Add a "Back" button
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton("Back", callback_data="back"))
     elif call.data == "about":
     # Get the bot's username dynamically
-        new_image_url = 'https://envs.sh/jxZ.jpg'
+        new_image_url = 'https://graph.org/file/beceaa5b16f36a7152f5f-698ec44623151d3067.jpg'
         new_caption = ABOUT_TXT
         markup = InlineKeyboardMarkup().add(InlineKeyboardButton("Back", callback_data="back"))
     elif call.data == "back":
         # Go back to the start message
-        new_image_url = 'https://envs.sh/jxZ.jpg'
+        new_image_url = 'https://graph.org/file/beceaa5b16f36a7152f5f-698ec44623151d3067.jpg'
         new_caption = "*Welcome💓✨\n• I can merge PDFs (Max= 20MB per file).\n• Send PDF files 📕 to merge and use /merge when you're done.*"
         # Restore original keyboard with Help, About, and Developer buttons
         markup = InlineKeyboardMarkup()
@@ -227,35 +226,8 @@ def clear_files(message):
         user_files[user_id] = []
     bot.reply_to(message, "Your file list has been cleared.")
 
-# Handle received images
-@bot.message_handler(content_types=['photo'])
-def handle_image(message):
-    user_id = message.from_user.id
-    
-    # Ensure dictionary entry for each user's images
-    if user_id not in user_images:
-        user_images[user_id] = []
-    
-    # Get file info and download the image
-    file_info = bot.get_file(message.photo[-1].file_id)
-    downloaded_file = bot.download_file(file_info.file_path)
-    
-    # Save the file as a BytesIO stream (in memory) with its message_id to preserve order
-    image_stream = BytesIO(downloaded_file)
-    user_images[user_id].append((message.message_id, image_stream))
-    
-    # Create a custom keyboard with descriptive "Merge Images" and "Clear Images" buttons
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    merge_button = KeyboardButton("Merge Images")
-    clear_button = KeyboardButton("Clear Images")
-    keyboard.add(merge_button, clear_button)
-    
-    # Send a message with the custom keyboard
-    bot.reply_to(message, "Added image to the list for PDF conversion.", reply_markup=keyboard)
-
-# Handle "Merge Images" button
-@bot.message_handler(func=lambda message: message.text == "Merge Images")
-def handle_merge_images(message):
+@bot.message_handler(commands=['convert_images'])
+def convert_images_to_pdf(message):
     user_id = message.from_user.id
     
     # Check if there are images to convert
@@ -282,7 +254,6 @@ def handle_image_pdf_filename(message):
         bot.reply_to(message, "Please provide a valid filename.")
         bot.register_next_step_handler(message, handle_image_pdf_filename)
 
-# Function to convert images to PDF
 def convert_images_with_filename(user_id, chat_id, filename):
     try:
         # Use BytesIO to avoid saving the PDF file on disk
@@ -306,18 +277,55 @@ def convert_images_with_filename(user_id, chat_id, filename):
             img_data.close()  # Close BytesIO streams
         user_images[user_id] = []
 
-# Handle "Clear Images" button
-@bot.message_handler(func=lambda message: message.text == "Clear Images")
-def handle_clear_images(message):
+# Handle received images
+@bot.message_handler(content_types=['photo'])
+def handle_image(message):
     user_id = message.from_user.id
     
-    # Check if the user has images and clear them
+    # Ensure directory for each user's images
+    if user_id not in user_images:
+        user_images[user_id] = []
+    
+    # Get file info and download the image
+    file_info = bot.get_file(message.photo[-1].file_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+    
+    # Save the file as a BytesIO stream (in memory) with its message_id to preserve order
+    image_stream = BytesIO(downloaded_file)
+    user_images[user_id].append((message.message_id, image_stream))
+    
+    # Get the current count of images for the process
+    image_count = len(user_images[user_id])
+
+    # Prepare the buttons for merging and clearing
+    markup = types.InlineKeyboardMarkup()
+    merge_button = types.InlineKeyboardButton("Merge Images", callback_data="merge_images")
+    clear_button = types.InlineKeyboardButton("Clear Images", callback_data="clear_images")
+    markup.add(merge_button, clear_button)
+
+    # Update the message to show the current image count
+    bot.reply_to(message, f"Added image #{image_count} to the list for PDF conversion.", reply_markup=markup)
+
+# Callback for Inline Buttons
+@bot.callback_query_handler(func=lambda call: call.data == 'merge_images')
+def merge_images_callback(call):
+    user_id = call.from_user.id
+    if user_id not in user_images or len(user_images[user_id]) == 0:
+        bot.answer_callback_query(call.id, "No images to merge.")
+        return
+    bot.answer_callback_query(call.id, "Merging images...")
+    bot.send_message(call.message.chat.id, "Please provide a filename for the PDF (without .pdf extension).")
+    bot.register_next_step_handler(call.message, handle_image_pdf_filename)
+
+@bot.callback_query_handler(func=lambda call: call.data == 'clear_images')
+def clear_images_callback(call):
+    user_id = call.from_user.id
     if user_id in user_images:
         for _, img_data in user_images[user_id]:
             img_data.close()  # Close each BytesIO stream
         user_images[user_id] = []
-    
-    bot.reply_to(message, "Your image list has been cleared.")
+    bot.answer_callback_query(call.id, "Images cleared.")
+    bot.send_message(call.message.chat.id, "Your image list has been cleared.")
     
 # Run the bot
 bot.polling()
