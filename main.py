@@ -5,7 +5,7 @@ from PyPDF2 import PdfMerger
 from PIL import Image
 from io import BytesIO
 import time 
-from bot.broadcast import bot
+from bot.broadcast import add_user, broadcast_message, get_user_count  # Import functions from the other file
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto, ReplyKeyboardMarkup, KeyboardButton
 
 # Initialize bot with token from environment variable
@@ -273,7 +273,7 @@ def convert_images_with_filename(user_id, chat_id, filename):
 
         # Send the PDF file back to the user from memory
         bot.send_document(chat_id, pdf_buffer, visible_file_name=filename)
-        bot.send_message(chat_id, "Here is your converted PDF! 📕😎")
+        bot.send_message(chat_id, "Here is your Merged PDF! 📕😎")
 
     finally:
         # Clean up user images after conversion
@@ -310,6 +310,40 @@ def clear_images(message):
         user_images[user_id] = []
     bot.reply_to(message, "Your image list has been cleared.")
 
-# Run the bot
+# Command to start the bot and add the user to the database
+@bot.message_handler(commands=["start"])
+def start(message):
+    add_user(message.from_user.id)
+
+# Command to get the user count, restricted to admin
+@bot.message_handler(commands=["usercount"])
+def user_count(message):
+    if message.from_user.id == 2031106491:  # Replace with admin's user ID
+        count = get_user_count()
+        bot.reply_to(message, f"There are {count} users in the database.")
+
+# Command to broadcast a message, restricted to admin
+@bot.message_handler(commands=["broadcast"])
+def broadcast(message):
+    if message.from_user.id == 2031106491:  # Replace with admin's user ID
+        try:
+            text_to_broadcast = message.text.split(" ", 1)[1]
+            successful_count, failed_count = broadcast_message(text_to_broadcast)
+            bot.reply_to(
+                message,
+                f"Broadcast completed!\nSent to {successful_count} users.\nFailed for {failed_count} users."
+            )
+        except IndexError:
+            bot.reply_to(message, "Please provide a message to broadcast.")
+
+# Function to send startup broadcast
+def on_bot_startup():
+    startup_message = "Bot has restarted! ⚡"
+    successful_count, failed_count = broadcast_message(startup_message)
+    print(f"Broadcast on startup completed! Sent to {successful_count} users. Failed for {failed_count} users.")
+
+# Run the bot and send a startup message
 if __name__ == "__main__":
+    on_bot_startup()
     bot.polling()
+
