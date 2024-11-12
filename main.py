@@ -4,9 +4,11 @@ from telebot import types
 from PyPDF2 import PdfMerger
 from PIL import Image
 from io import BytesIO
-import time 
-from bot.broadcast import add_user, broadcast_message, user_count  # Import functions from the other file
+from telebot import TeleBot
+from pymongo import MongoClient
+import time
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto, ReplyKeyboardMarkup, KeyboardButton
+
 
 # Initialize bot with token from environment variable
 BOT_TOKEN = os.getenv('BOT_TOKEN')
@@ -310,19 +312,50 @@ def clear_images(message):
         user_images[user_id] = []
     bot.reply_to(message, "Your image list has been cleared.")
 
-# Command to start the bot and add the user to the database
+
+# Broadcast 
+
+MONGO_URI = "mongodb+srv://uramit0001:EZ1u5bfKYZ52XeGT@cluster0.qnbzn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"  # Directly filled Mongo URI
+
+# Initialize bot instance
+bot = TeleBot(BOT_TOKEN)
+
+# MongoDB setup
+client = MongoClient(MONGO_URI)
+db = client["bot_database"]
+users_collection = db["users"]
+
+# Add a new user if not already in the database
+def add_user(user_id):
+    if users_collection.find_one({"user_id": user_id}) is None:
+        users_collection.insert_one({"user_id": user_id})
+
+# Command to start the bot
 @bot.message_handler(commands=["start"])
 def start(message):
     add_user(message.from_user.id)
 
-# Command to get the user count, restricted to admin
+# Command to get user count
 @bot.message_handler(commands=["usercount"])
 def user_count(message):
     if message.from_user.id == 2031106491:  # Replace with admin's user ID
-        count = get_user_count()
+        count = users_collection.count_documents({})
         bot.reply_to(message, f"There are {count} users in the database.")
 
-# Command to broadcast a message, restricted to admin
+# Broadcast function
+def broadcast_message(text):
+    successful_count = 0
+    failed_count = 0
+    for user in users_collection.find():
+        try:
+            bot.send_message(user["user_id"], text)
+            successful_count += 1
+        except Exception as e:
+            print(f"Error sending message to {user['user_id']}: {e}")
+            failed_count += 1
+    return successful_count, failed_count
+
+# Command to broadcast a message (only for admins)
 @bot.message_handler(commands=["broadcast"])
 def broadcast(message):
     if message.from_user.id == 2031106491:  # Replace with admin's user ID
@@ -336,9 +369,10 @@ def broadcast(message):
         except IndexError:
             bot.reply_to(message, "Please provide a message to broadcast.")
 
-# Function to send startup broadcast
+# Broadcast a message on bot startup
 def on_bot_startup():
-    startup_message = "Bot has restarted! ⚡"
+    # You can customize this message as per your need
+    startup_message = "Bot has restarted! ⚡."
     successful_count, failed_count = broadcast_message(startup_message)
     print(f"Broadcast on startup completed! Sent to {successful_count} users. Failed for {failed_count} users.")
 
