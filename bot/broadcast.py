@@ -1,14 +1,15 @@
-# bot/broadcast.py
+import os
 from telebot import TeleBot
 from pymongo import MongoClient
-import time
 
-# Initialize the bot
-BOT_TOKEN = os.getenv('BOT_TOKEN')
-bot = TeleBot("BOT_TOKEN")  # Replace with your bot token
+# Retrieve bot token from environment
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+MONGO_URI = "mongodb+srv://uramit0001:EZ1u5bfKYZ52XeGT@cluster0.qnbzn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"  # Directly filled Mongo URI
+
+# Initialize bot instance
+bot = TeleBot(BOT_TOKEN)
 
 # MongoDB setup
-MONGO_URI = "mongodb+srv://uramit0001:EZ1u5bfKYZ52XeGT@cluster0.qnbzn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"  # Replace with your MongoDB URI
 client = MongoClient(MONGO_URI)
 db = client["bot_database"]
 users_collection = db["users"]
